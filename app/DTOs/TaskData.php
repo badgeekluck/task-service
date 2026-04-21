@@ -8,11 +8,6 @@ use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use Carbon\CarbonImmutable;
 
-/**
- * Task veri transfer nesnesi.
- *
- * PHP 8.4 readonly class — oluşturulduktan sonra hiçbir alan değiştirilemez. Bu sayede Action'lara geçen veri yanlışlıkla mutasyona uğrayamaz.
- */
 final readonly class TaskData
 {
     public function __construct(
