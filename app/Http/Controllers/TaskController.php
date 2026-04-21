@@ -10,11 +10,13 @@ use App\Actions\Task\UpdateTaskAction;
 use App\DTOs\TaskData;
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
+use App\Http\Requests\FilterTaskRequest;
 use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\UpdateTaskRequest;
+use App\Http\Resources\TaskResource;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 final class TaskController extends Controller
 {
@@ -28,28 +30,28 @@ final class TaskController extends Controller
      * GET /api/tasks
      * Kullanıcının görev listesi — filtreli ve sayfalı.
      */
-    public function index(Request $request): JsonResponse
+    public function index(FilterTaskRequest $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Task::class);
 
         $tasks = Task::query()
             ->forUser($request->user()->id)
             ->when(
-                $request->string('status')->isNotEmpty(),
-                fn ($q) => $q->withStatus(TaskStatus::from($request->string('status')->value()))
+                $request->validated('status'),
+                fn ($q, $v) => $q->withStatus(TaskStatus::from($v))
             )
             ->when(
-                $request->string('priority')->isNotEmpty(),
-                fn ($q) => $q->withPriority(TaskPriority::from($request->string('priority')->value()))
+                $request->validated('priority'),
+                fn ($q, $v) => $q->withPriority(TaskPriority::from($v))
             )
             ->when(
-                $request->string('search')->isNotEmpty(),
-                fn ($q) => $q->search($request->string('search')->value())
+                $request->validated('search'),
+                fn ($q, $v) => $q->search($v)
             )
             ->latest()
-            ->paginate($request->integer('per_page', 15));
+            ->paginate($request->validated('per_page', 15));
 
-        return response()->json($tasks);
+        return TaskResource::collection($tasks);
     }
 
     /**
@@ -65,10 +67,10 @@ final class TaskController extends Controller
             data: TaskData::fromRequest($request->validated()),
         );
 
-        return response()->json([
-            'message' => 'Görev başarıyla oluşturuldu.',
-            'data'    => $task,
-        ], 201);
+        return (new TaskResource($task))
+            ->additional(['message' => 'Görev başarıyla oluşturuldu.'])
+            ->response()
+            ->setStatusCode(201);
     }
 
     /**
@@ -79,7 +81,7 @@ final class TaskController extends Controller
     {
         $this->authorize('view', $task);
 
-        return response()->json(['data' => $task]);
+        return new TaskResource($task);
     }
 
     /**
@@ -90,7 +92,6 @@ final class TaskController extends Controller
     {
         $this->authorize('update', $task);
 
-        // Gönderilmeyen alanlar mevcut değerleriyle doldurulur
         $validated = array_merge([
             'title'       => $task->title,
             'description' => $task->description,
@@ -104,10 +105,8 @@ final class TaskController extends Controller
             data: TaskData::fromRequest($validated),
         );
 
-        return response()->json([
-            'message' => 'Görev başarıyla güncellendi.',
-            'data'    => $task,
-        ]);
+        return (new TaskResource($task))
+            ->additional(['message' => 'Görev başarıyla güncellendi.']);
     }
 
     /**

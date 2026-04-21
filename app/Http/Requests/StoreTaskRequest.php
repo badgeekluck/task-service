@@ -22,8 +22,8 @@ class StoreTaskRequest extends FormRequest
         return [
             'title'       => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'status'      => ['required', Rule::enum(TaskStatus::class)],
-            'priority'    => ['required', Rule::enum(TaskPriority::class)],
+            'status'      => ['sometimes', Rule::enum(TaskStatus::class)],
+            'priority'    => ['sometimes', Rule::enum(TaskPriority::class)],
             'due_date'    => ['nullable', 'date', 'after_or_equal:today'],
         ];
     }
@@ -31,6 +31,10 @@ class StoreTaskRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'title.required'          => 'Görev başlığı zorunludur.',
+            'title.min'               => 'Başlık en az :min karakter olmalıdır.',
+            'status.enum'             => 'Geçersiz durum. Geçerli değerler: ' . implode(', ', TaskStatus::values()),
+            'priority.enum'           => 'Geçersiz öncelik. Geçerli değerler: ' . implode(', ', TaskPriority::values()),
             'due_date.after_or_equal' => 'Bitiş tarihi geçmiş bir zaman olamaz.',
         ];
     }
