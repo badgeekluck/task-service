@@ -14,6 +14,8 @@ RUN install-php-extensions \
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+COPY opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+
 WORKDIR /app
 
 COPY composer.json composer.lock ./
