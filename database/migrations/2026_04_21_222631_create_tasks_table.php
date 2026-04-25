@@ -9,7 +9,8 @@ return new class extends Migration {
     {
         Schema::create('tasks', function (Blueprint $table) {
             $table->ulid('id')->primary();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->ulid('user_id');
+            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
 
             $table->string('title');
             $table->text('description')->nullable();
