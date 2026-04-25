@@ -2,6 +2,7 @@
 
 use App\Exceptions\Task\InvalidStatusTransitionException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
@@ -22,8 +23,16 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
 
-        // Domain exception → 422 Unprocessable Entity
-        // Tamamlanan/iptal edilen görevi güncellemeye çalışmak
+        // Kimlik doğrulama hatası → 401 JSON
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Kimlik doğrulaması gerekli.',
+                ], 401);
+            }
+        });
+
+        // Geçersiz durum geçişi → 422
         $exceptions->render(function (InvalidStatusTransitionException $e, Request $request) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -33,7 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // Model bulunamadı → 404 (varsayılan Laravel mesajı yerine temiz JSON)
+        // Model bulunamadı → 404
         $exceptions->render(function (ModelNotFoundException $e, Request $request) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -42,7 +51,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // Yetki hatası → 403 (Policy red)
+        // Yetki hatası → 403
         $exceptions->render(function (AuthorizationException $e, Request $request) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -53,13 +62,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
     })
     ->booted(function (): void {
-        // API genel: 60 istek/dk — kullanıcı bazlı veya IP bazlı
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)
                         ->by($request->user()?->id ?: $request->ip());
         });
 
-        // Auth endpoint'leri: kaba kuvvet koruması — 10 istek/dk IP bazlı
         RateLimiter::for('auth', function (Request $request) {
             return Limit::perMinute(10)->by($request->ip());
         });
