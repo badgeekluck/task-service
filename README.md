@@ -1,58 +1,121 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Task Service
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel 13 + PHP 8.4
 
-## About Laravel
+## Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **PHP 8.4** — readonly class, typed properties
+- **Laravel 13** — framework
+- **FrankenPHP + Octane** — yüksek performanslı sunucusu
+- **PostgreSQL** — veritabanı
+- **Laravel Sanctum** — token tabanlı kimlik doğrulama
+- **Pest** — test framework
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Kurulum
 
 ```bash
-composer require laravel/boost --dev
+# Repoyu klonla
+git clone <repo-url>
+cd task-service
 
-php artisan boost:install
+# .env dosyasını oluştur
+cp .env.example .env
+
+# Docker ile çalıştır
+docker compose up -d
+
+# Migration + seed (test verisi)
+docker compose exec app php artisan migrate:fresh --seed
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Seed sonrası hazır kullanıcılar:
 
-## Contributing
+| Email | Şifre |
+|-------|-------|
+| harun@test.com | password |
+| other@test.com | password |
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## API Endpoints
 
-## Code of Conduct
+Tüm endpointler `/api/v1/` prefix'i ile çalışır.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Auth
 
-## Security Vulnerabilities
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| POST | `/register` | Yeni kullanıcı kaydı |
+| POST | `/login` | Giriş, token döner |
+| POST | `/logout` | Token'ı siler |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Tasks (auth gerekli)
 
-## License
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/tasks` | Task listesi (filtrelenebilir) |
+| POST | `/tasks` | Yeni task oluştur |
+| GET | `/tasks/{id}` | Tek task |
+| PATCH | `/tasks/{id}` | Güncelle |
+| DELETE | `/tasks/{id}` | Sil (soft delete) |
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+**Filtreler:** `?status=pending&priority=high&search=kelime&per_page=15`
+
+Tüm isteklerde header olarak `Accept: application/json` gönderilmeli.
+
+## Mimari Kararlar
+
+### Action Pattern (SRP)
+Her işlem kendi Action sınıfında. Controller sadece isteği alıp Action'a iletir, response döner. Bussiness logic controller'da değil.
+
+```
+ListTasksAction   → filtreleme + sayfalama
+CreateTaskAction  → DB transaction ile oluşturma
+UpdateTaskAction  → PATCH semantiği, state machine kontrolü
+DeleteTaskAction  → soft delete
+```
+
+### ULID Primary Key
+UUID yerine ULID tercih edildi. ULID sıralı (time-sortable) olduğu için PostgreSQL'de B-tree index'lerinde daha iyi performans verir, aynı zamanda unique olduğu için güvenli.
+
+### Composite Index
+```sql
+(user_id, status, created_at)
+```
+Task listesindeki en yaygın sorgu: belirli kullanıcının belirli statüsteki task'larını tarihe göre sıralama. Bu index full table scan'i engeller.
+
+### State Machine
+Task status'u rastgele değiştirilemez. `TaskStatus` enum'u izin verilen geçişleri tanımlar:
+
+```
+pending → in_progress → completed
+pending → cancelled
+in_progress → cancelled
+```
+`completed` ve `cancelled` terminal durum — geri dönüş yok.
+
+### PHP 8.4 readonly DTO
+Validation sonrası veri `TaskData` ve `TaskFilters` DTO'larına dönüştürülür. `final readonly class` sayesinde bu objeler immutable — bir kez oluşturulunca değiştirilemez.
+
+### Policy (IDOR/BOLA Koruması)
+Her task işleminde `TaskPolicy` devreye girer. Kullanıcı sadece kendi task'larına erişebilir. `user_id` eşleşmezse 403 döner.
+
+### Rate Limiting
+- `/register` ve `/login`: dakikada 10 istek (IP bazlı)
+- Diğer tüm endpointler: dakikada 60 istek (kullanıcı bazlı)
+
+### OPcache + JIT
+`opcache.ini` ile production için yapılandırıldı: `validate_timestamps=0`, `jit=tracing`, `jit_buffer_size=128M`. İlk istek sonrası PHP bytecode bellekte kalır, tekrar derlenmez.
+
+## Testler
+
+```bash
+# Tüm testleri çalıştır
+docker compose exec app ./vendor/bin/pest
+
+# Sadece unit testler
+docker compose exec app ./vendor/bin/pest --testsuite=Unit
+
+# Sadece feature testler
+docker compose exec app ./vendor/bin/pest --testsuite=Feature
+```
+
+29 feature test (auth, CRUD, güvenlik, status geçişleri) + 12 unit test case (state machine).

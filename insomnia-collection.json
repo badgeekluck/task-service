@@ -1,0 +1,203 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-04-25",
+  "__export_source": "insomnia",
+  "resources": [
+    {
+      "_id": "wrk_task_api",
+      "_type": "workspace",
+      "name": "Task API",
+      "description": "Laravel Task Service API"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_task_api",
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:8000/api/v1",
+        "token": ""
+      }
+    },
+    {
+      "_id": "fld_auth",
+      "_type": "request_group",
+      "parentId": "wrk_task_api",
+      "name": "Auth"
+    },
+    {
+      "_id": "req_register",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Register",
+      "method": "POST",
+      "url": "{{ base_url }}/register",
+      "headers": [
+        { "name": "Accept", "value": "application/json" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n\t\"name\": \"Harun\",\n\t\"email\": \"harun@test.com\",\n\t\"password\": \"password\",\n\t\"password_confirmation\": \"password\"\n}"
+      }
+    },
+    {
+      "_id": "req_login",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Login",
+      "method": "POST",
+      "url": "{{ base_url }}/login",
+      "headers": [
+        { "name": "Accept", "value": "application/json" },
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n\t\"email\": \"harun@test.com\",\n\t\"password\": \"password\"\n}"
+      }
+    },
+    {
+      "_id": "req_logout",
+      "_type": "request",
+      "parentId": "fld_auth",
+      "name": "Logout",
+      "method": "POST",
+      "url": "{{ base_url }}/logout",
+      "headers": [
+        { "name": "Accept", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": { "mimeType": "application/json", "text": "" }
+    },
+    {
+      "_id": "fld_tasks",
+      "_type": "request_group",
+      "parentId": "wrk_task_api",
+      "name": "Tasks"
+    },
+    {
+      "_id": "req_task_list",
+      "_type": "request",
+      "parentId": "fld_tasks",
+      "name": "List Tasks",
+      "method": "GET",
+      "url": "{{ base_url }}/tasks",
+      "headers": [
+        { "name": "Accept", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "parameters": [
+        { "name": "status", "value": "", "disabled": true },
+        { "name": "priority", "value": "", "disabled": true },
+        { "name": "search", "value": "", "disabled": true },
+        { "name": "per_page", "value": "15", "disabled": true }
+      ]
+    },
+    {
+      "_id": "req_task_create",
+      "_type": "request",
+      "parentId": "fld_tasks",
+      "name": "Create Task",
+      "method": "POST",
+      "url": "{{ base_url }}/tasks",
+      "headers": [
+        { "name": "Accept", "value": "application/json" },
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n\t\"title\": \"Yeni görev\",\n\t\"description\": \"Görev açıklaması\",\n\t\"priority\": \"high\",\n\t\"due_date\": \"2026-12-01\"\n}"
+      }
+    },
+    {
+      "_id": "req_task_show",
+      "_type": "request",
+      "parentId": "fld_tasks",
+      "name": "Show Task",
+      "method": "GET",
+      "url": "{{ base_url }}/tasks/TASK_ID_BURAYA",
+      "headers": [
+        { "name": "Accept", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ]
+    },
+    {
+      "_id": "req_task_update",
+      "_type": "request",
+      "parentId": "fld_tasks",
+      "name": "Update Task",
+      "method": "PATCH",
+      "url": "{{ base_url }}/tasks/TASK_ID_BURAYA",
+      "headers": [
+        { "name": "Accept", "value": "application/json" },
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n\t\"status\": \"in_progress\"\n}"
+      }
+    },
+    {
+      "_id": "req_task_delete",
+      "_type": "request",
+      "parentId": "fld_tasks",
+      "name": "Delete Task",
+      "method": "DELETE",
+      "url": "{{ base_url }}/tasks/TASK_ID_BURAYA",
+      "headers": [
+        { "name": "Accept", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ]
+    },
+    {
+      "_id": "fld_security",
+      "_type": "request_group",
+      "parentId": "wrk_task_api",
+      "name": "Güvenlik Testleri"
+    },
+    {
+      "_id": "req_no_token",
+      "_type": "request",
+      "parentId": "fld_security",
+      "name": "Token Olmadan (401 beklenir)",
+      "method": "GET",
+      "url": "{{ base_url }}/tasks",
+      "headers": [
+        { "name": "Accept", "value": "application/json" }
+      ]
+    },
+    {
+      "_id": "req_idor",
+      "_type": "request",
+      "parentId": "fld_security",
+      "name": "Başka Kullanıcı Task (403 beklenir)",
+      "method": "GET",
+      "url": "{{ base_url }}/tasks/BASKA_KULLANICI_TASK_ID",
+      "headers": [
+        { "name": "Accept", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ]
+    },
+    {
+      "_id": "req_invalid_transition",
+      "_type": "request",
+      "parentId": "fld_security",
+      "name": "Geçersiz Status Geçişi (422 beklenir)",
+      "method": "PATCH",
+      "url": "{{ base_url }}/tasks/COMPLETED_TASK_ID",
+      "headers": [
+        { "name": "Accept", "value": "application/json" },
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {{ token }}" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n\t\"status\": \"pending\"\n}"
+      }
+    }
+  ]
+}
