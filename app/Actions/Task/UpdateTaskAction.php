@@ -4,51 +4,56 @@ declare(strict_types=1);
 
 namespace App\Actions\Task;
 
-use App\DTOs\TaskData;
+use App\DTOs\UpdateTaskData;
 use App\Exceptions\Task\InvalidStatusTransitionException;
 use App\Models\Task;
+use App\Services\TaskCacheService;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 final readonly class UpdateTaskAction
 {
+    public function __construct(
+        private TaskCacheService $cache,
+    ) {}
+
     /**
-     * @param array<string, mixed> $validated  PATCH isteğinden gelen validated alanlar
-     *
      * @throws InvalidStatusTransitionException  Geçersiz durum geçişi
      */
-    public function execute(Task $task, array $validated): Task
+    public function execute(Task $task, UpdateTaskData $data): Task
     {
-        $data = TaskData::fromRequest(array_merge([
-            'title'       => $task->title,
-            'description' => $task->description,
-            'status'      => $task->status->value,
-            'priority'    => $task->priority->value,
-            'due_date'    => $task->due_date?->toDateString(),
-        ], $validated));
-
+        // State machine kontrolü — sadece status değişiyorsa çalışır.
         $this->ensureValidTransition($task, $data);
 
-        $task->update([
-            'title'       => $data->title,
-            'description' => $data->description,
-            'status'      => $data->status->value,
-            'priority'    => $data->priority->value,
-            'due_date'    => $data->dueDate,
-        ]);
+        // Sadece gönderilen alanları güncelle (race condition önlemi).
+        $task->update($data->toArray());
 
-        return $task->refresh();
-    }
-
-    private function ensureValidTransition(Task $task, TaskData $data): void
-    {
-        $current = $task->status;
-        $next    = $data->status;
-
-        if ($current === $next) {
-            return; // Durum değişmiyorsa kontrol gerekmez
+        // Cache side effect — güncelleme başarılı, Redis çökse bile 200 dönmeli.
+        try {
+            $this->cache->invalidate($task->user_id);
+        } catch (Throwable $e) {
+            Log::warning("Task güncellendi ancak cache temizlenemedi: {$e->getMessage()}", [
+                'user_id' => $task->user_id,
+                'task_id' => $task->id,
+            ]);
         }
 
-        if (! $current->canTransitionTo($next)) {
-            throw new InvalidStatusTransitionException(from: $current, to: $next);
+        // update() model'i bellekte zaten günceller — refresh() ile ekstra SELECT gerekmez.
+        return $task;
+    }
+
+    private function ensureValidTransition(Task $task, UpdateTaskData $data): void
+    {
+        if ($data->status === null) {
+            return; // Status değişmiyorsa kontrol gerekmez
+        }
+
+        if ($task->status === $data->status) {
+            return; // Aynı durum, geçiş yok
+        }
+
+        if (! $task->status->canTransitionTo($data->status)) {
+            throw new InvalidStatusTransitionException(from: $task->status, to: $data->status);
         }
     }
 }

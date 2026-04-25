@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
+use App\Jobs\ProcessTaskCreated;
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Support\Facades\Queue;
 
 describe('Task List', function () {
 
@@ -64,6 +66,8 @@ describe('Task List', function () {
 describe('Task Create', function () {
 
     it('creates a task and returns 201', function () {
+        Queue::fake();
+
         $user = User::factory()->create();
 
         $this->actingAs($user)
@@ -76,6 +80,8 @@ describe('Task Create', function () {
              ->assertStatus(201)
              ->assertJsonPath('data.title', 'Test görevi')
              ->assertJsonPath('data.status.value', 'pending');
+
+        Queue::assertPushed(ProcessTaskCreated::class);
     });
 
     it('fails without title', function () {

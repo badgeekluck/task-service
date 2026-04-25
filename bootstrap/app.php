@@ -23,13 +23,11 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
 
-        // Kimlik doğrulama hatası → 401 JSON
+        // Kimlik doğrulama hatası → 401 JSON (her zaman, Accept header'ına bakılmaksızın)
         $exceptions->render(function (AuthenticationException $e, Request $request) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'Kimlik doğrulaması gerekli.',
-                ], 401);
-            }
+            return response()->json([
+                'message' => 'Kimlik doğrulaması gerekli.',
+            ], 401);
         });
 
         // Geçersiz durum geçişi → 422

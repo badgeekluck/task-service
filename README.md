@@ -1,13 +1,14 @@
 # Task Service
 
-Laravel 13 + PHP 8.4
+Laravel 13 + PHP 8.4 ile yazılmış RESTful görev yönetimi API'si.
 
 ## Stack
 
 - **PHP 8.4** — readonly class, typed properties
 - **Laravel 13** — framework
-- **FrankenPHP + Octane** — yüksek performanslı sunucusu
+- **FrankenPHP + Octane** — yüksek performanslı uygulama sunucusu
 - **PostgreSQL** — veritabanı
+- **Redis** — cache ve queue
 - **Laravel Sanctum** — token tabanlı kimlik doğrulama
 - **Pest** — test framework
 
@@ -21,7 +22,7 @@ cd task-service
 # .env dosyasını oluştur
 cp .env.example .env
 
-# Docker ile çalıştır
+# Docker ile çalıştır (app + worker + db + redis otomatik başlar)
 docker compose up -d
 
 # Migration + seed (test verisi)
@@ -34,6 +35,8 @@ Seed sonrası hazır kullanıcılar:
 |-------|-------|
 | harun@test.com | password |
 | other@test.com | password |
+
+Insomnia collection dosyası: `insomnia-collection.json` — import edip direkt test edebilirsin.
 
 ## API Endpoints
 
@@ -59,22 +62,22 @@ Tüm endpointler `/api/v1/` prefix'i ile çalışır.
 
 **Filtreler:** `?status=pending&priority=high&search=kelime&per_page=15`
 
-Tüm isteklerde header olarak `Accept: application/json` gönderilmeli.
+Tüm isteklerde `Accept: application/json` header'ı gönderilmeli.
 
 ## Mimari Kararlar
 
 ### Action Pattern (SRP)
-Her işlem kendi Action sınıfında. Controller sadece isteği alıp Action'a iletir, response döner. Bussiness logic controller'da değil.
+Her işlem kendi Action sınıfında. Controller sadece isteği alıp Action'a iletir, response döner. Business logic controller'da değil.
 
 ```
-ListTasksAction   → filtreleme + sayfalama
-CreateTaskAction  → DB transaction ile oluşturma
-UpdateTaskAction  → PATCH semantiği, state machine kontrolü
-DeleteTaskAction  → soft delete
+ListTasksAction   → cache + filtreleme + sayfalama
+CreateTaskAction  → DB transaction + cache invalidation + job dispatch
+UpdateTaskAction  → PATCH semantiği + state machine kontrolü + cache invalidation
+DeleteTaskAction  → soft delete + cache invalidation
 ```
 
 ### ULID Primary Key
-UUID yerine ULID tercih edildi. ULID sıralı (time-sortable) olduğu için PostgreSQL'de B-tree index'lerinde daha iyi performans verir, aynı zamanda unique olduğu için güvenli.
+UUID yerine ULID tercih edildi. ULID sıralı (time-sortable) olduğu için PostgreSQL'de B-tree index'lerinde daha iyi performans verir, aynı zamanda tahmin edilemez olduğu için güvenlidir.
 
 ### Composite Index
 ```sql
@@ -97,6 +100,42 @@ Validation sonrası veri `TaskData` ve `TaskFilters` DTO'larına dönüştürül
 
 ### Policy (IDOR/BOLA Koruması)
 Her task işleminde `TaskPolicy` devreye girer. Kullanıcı sadece kendi task'larına erişebilir. `user_id` eşleşmezse 403 döner.
+
+### Redis Cache — ID-Only Pattern
+
+`LengthAwarePaginator` nesnesi closure içerdiği için Redis'e doğrudan serialize edilemez. Bu sorunu çözmek için **sadece ID listesi ve toplam sayı** cache'lenir:
+
+```php
+// Cache'lenen şey: primitif veri (serialize edilebilir)
+[$ids, $total] = Cache::tags(["user:{$user->id}:tasks"])
+    ->remember($cacheKey, 60, function () {
+        return [$ids, $total]; // string[] + int
+    });
+
+// Cache'ten sonra: modeller ID ile çekiliyor, PHP'de sıralanıyor
+$items = Task::whereIn('id', $ids)
+    ->get()
+    ->sortBy(fn ($task) => array_search($task->id, $ids))
+    ->values();
+```
+
+**Cache key:** `tasks:user:{id}:{md5(filtreler)}:page:{n}` — aynı filtre kombinasyonu aynı key'i üretir.
+
+**Tag-based invalidation:** `Cache::tags(["user:{$userId}:tasks"])->flush()` ile kullanıcının tüm cache sayfaları tek komutla temizlenir. Create/update/delete sonrası `TaskCacheService::invalidate()` çağrılır.
+
+**Sonuç:** İlk istek ~6500ms (DB + cache yazma), sonraki istekler ~9ms (sadece Redis okuma + `whereIn`).
+
+### Redis Queue — Async Job
+
+Task oluşturulunca `ProcessTaskCreated` job'ı Redis queue'ya gönderilir:
+
+```php
+// CreateTaskAction içinde
+ProcessTaskCreated::dispatch($task);
+// API burada durmuyor — 201 döner, job arka planda işlenir
+```
+
+Worker container bu job'ı async olarak tüketir. API response süresi job'ın süresinden bağımsız. `docker compose up -d` ile worker container `restart: unless-stopped` politikasıyla otomatik başlar — ayrıca komut çalıştırmak gerekmez.
 
 ### Rate Limiting
 - `/register` ve `/login`: dakikada 10 istek (IP bazlı)
