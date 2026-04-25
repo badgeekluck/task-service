@@ -7,10 +7,6 @@ use App\Models\User;
 
 class TaskPolicy
 {
-    /**
-     * Kullanıcı listelemeyi görebilir mi?
-     * Sisteme giriş yapmış herkes kendi listesini görebilir.
-     */
     public function viewAny(User $user): bool
     {
         return true;

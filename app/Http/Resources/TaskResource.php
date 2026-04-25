@@ -8,16 +8,6 @@ use App\Models\Task;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/**
- * Task API dönüştürücüsü (Transformer).
- *
- * Neden Resource?
- * - DB sütun adları dışarıya sızmaz.
- * - Enum'lar hem makine okunabilir (value) hem insan okunabilir (label) döner.
- * - API şeması DB şemasından bağımsız değişebilir.
- *
- * @mixin Task
- */
 final class TaskResource extends JsonResource
 {
     public function toArray(Request $request): array

@@ -25,7 +25,6 @@ final readonly class UpdateTaskAction
             'due_date'    => $task->due_date?->toDateString(),
         ], $validated));
 
-        // State machine koruması — terminal durumdan çıkış yasak
         $this->ensureValidTransition($task, $data);
 
         $task->update([

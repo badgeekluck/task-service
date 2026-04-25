@@ -15,7 +15,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Task extends Model
 {
-    // ULID kullanımı (Güvenlik ve Performans), SoftDeletes (Çöp kutusu)
     use HasFactory, HasUlids, SoftDeletes;
 
     protected $fillable = [
@@ -27,17 +26,12 @@ class Task extends Model
         'user_id',
     ];
 
-    // Veritabanından çıkan verileri otomatik olarak Enum ve Date nesnelerine çevirir
     protected $casts = [
         'status' => TaskStatus::class,
         'priority' => TaskPriority::class,
         'due_date' => 'date',
     ];
 
-    /**
-     * Controller'da spagetti sorgular yazmamak için
-     * Eloquent'e kendi yazdığımız TaskBuilder'ı kullanmasını söylüyoruz.
-     */
     public function newEloquentBuilder($query): TaskBuilder
     {
         return new TaskBuilder($query);

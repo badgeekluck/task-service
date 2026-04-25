@@ -6,10 +6,10 @@ namespace App\Actions\Task;
 
 use App\Models\Task;
 
-readonly class DeleteTaskAction
+final readonly class DeleteTaskAction
 {
-    public function execute(Task $task): bool
+    public function execute(Task $task): void
     {
-        return $task->delete();
+        $task->delete();
     }
 }
