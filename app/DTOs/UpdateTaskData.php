@@ -8,16 +8,6 @@ use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use Carbon\CarbonImmutable;
 
-/**
- * PATCH semantiği için DTO.
- *
- * Problem: null hem "gönderilmedi" hem de "temizle" anlamına gelebilir.
- * Çözüm: nullable alanlar için ayrı `has*` flag'leri.
- *
- * Örnek:
- *   PATCH { "due_date": null }  → hasDueDate=true,  dueDate=null  → alanı temizle
- *   PATCH { "title": "Yeni" }   → hasDueDate=false, dueDate=null  → due_date'e dokunma
- */
 final readonly class UpdateTaskData
 {
     public function __construct(

@@ -12,17 +12,20 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::factory()->create([
-            'name'  => 'Harun',
-            'email' => 'harun@test.com',
-            // şifre: password
-        ]);
+        $admin = User::firstOrCreate(
+            ['email' => 'harun@test.com'],
+            [
+                'name' => 'Harun',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+            ]
+        );
 
-        Task::factory(5)->forUser($admin)->pending()->create();
-        Task::factory(3)->forUser($admin)->inProgress()->create();
-        Task::factory(2)->forUser($admin)->completed()->create();
-        Task::factory(2)->forUser($admin)->overdue()->create();
-        Task::factory(1)->forUser($admin)->critical()->create();
+        Task::factory(5)->for($admin)->pending()->create();
+        Task::factory(3)->for($admin)->inProgress()->create();
+        Task::factory(2)->for($admin)->completed()->create();
+        Task::factory(2)->for($admin)->overdue()->create();
+        Task::factory(1)->for($admin)->critical()->create();
 
         $other = User::factory()->create([
             'name'  => 'Other User',

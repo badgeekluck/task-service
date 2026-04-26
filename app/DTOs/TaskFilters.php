@@ -26,7 +26,7 @@ final readonly class TaskFilters
                           ? TaskPriority::from($validated['priority'])
                           : null,
             search:   $validated['search'] ?? null,
-            perPage:  $validated['per_page'] ?? 15,
+            perPage:  isset($validated['per_page']) ? (int) $validated['per_page'] : 15,
         );
     }
 }
