@@ -123,8 +123,6 @@ $items = Task::whereIn('id', $ids)
 
 **Tag-based invalidation:** `Cache::tags(["user:{$userId}:tasks"])->flush()` ile kullanıcının tüm cache sayfaları tek komutla temizlenir. Create/update/delete sonrası `TaskCacheService::invalidate()` çağrılır.
 
-**Sonuç:** İlk istek ~6500ms (DB + cache yazma), sonraki istekler ~9ms (sadece Redis okuma + `whereIn`).
-
 ### Redis Queue — Async Job
 
 Task oluşturulunca `ProcessTaskCreated` job'ı Redis queue'ya gönderilir:
