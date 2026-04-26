@@ -16,9 +16,7 @@ final class ProcessTaskCreated implements ShouldQueue
     use Queueable, InteractsWithQueue;
 
     public int $tries = 3;
-
     public int $timeout = 30;
-
     public int $maxExceptions = 2;
 
     public function __construct(
@@ -36,11 +34,10 @@ final class ProcessTaskCreated implements ShouldQueue
         $task = Task::find($this->taskId);
 
         if ($task === null) {
-            // Soft-deleted veya hiç oluşturulmamış — retry gerekmez, sessizce çık
             return;
         }
 
-        Log::channel('stack')->info('Task oluşturuldu', [
+        Log::info('Task oluşturuldu', [
             'task_id'  => $task->id,
             'user_id'  => $task->user_id,
             'title'    => $task->title,
@@ -48,14 +45,9 @@ final class ProcessTaskCreated implements ShouldQueue
         ]);
     }
 
-    /**
-     * Tüm retry'lar tükendiğinde çağrılır.
-     * Job failed_jobs tablosuna düşmeden önce burası çalışır.
-     * Gerçek projede: alert gönder, monitoring'e bildir vb.
-     */
     public function failed(?Throwable $exception): void
     {
-        Log::channel('stack')->error('ProcessTaskCreated job başarısız oldu', [
+        Log::error('ProcessTaskCreated başarısız', [
             'task_id'   => $this->taskId,
             'user_id'   => $this->userId,
             'exception' => $exception?->getMessage(),

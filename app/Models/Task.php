@@ -27,7 +27,7 @@ class Task extends Model
     ];
 
     protected $casts = [
-        'status' => TaskStatus::class,
+        'status'   => TaskStatus::class,
         'priority' => TaskPriority::class,
         'due_date' => 'date',
     ];
@@ -37,9 +37,6 @@ class Task extends Model
         return new TaskBuilder($query);
     }
 
-    /**
-     * Görevin sahibi olan kullanıcı ilişkisi
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

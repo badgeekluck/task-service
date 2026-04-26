@@ -23,7 +23,7 @@ final readonly class UpdateTaskData
     public static function fromRequest(array $validated): self
     {
         return new self(
-            title:          $validated['title']    ?? null,
+            title:          $validated['title'] ?? null,
             status:         isset($validated['status'])
                                 ? TaskStatus::from($validated['status'])
                                 : null,
@@ -39,11 +39,6 @@ final readonly class UpdateTaskData
         );
     }
 
-    /**
-     * Sadece istekte gelen alanları döndürür — race condition önlemi.
-     *
-     * @return array<string, mixed>
-     */
     public function toArray(): array
     {
         $data = [];
@@ -60,14 +55,10 @@ final readonly class UpdateTaskData
             $data['priority'] = $this->priority->value;
         }
 
-        // hasDescription: "description" key'i istekte var mıydı?
-        // true  + null → null yaz (temizle)
-        // false + null → atla (dokunma)
         if ($this->hasDescription) {
             $data['description'] = $this->description;
         }
 
-        // Aynı mantık due_date için
         if ($this->hasDueDate) {
             $data['due_date'] = $this->dueDate?->toDateString();
         }

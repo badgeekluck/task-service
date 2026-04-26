@@ -22,11 +22,10 @@ final readonly class DeleteTaskAction
 
         $task->delete();
 
-        // Cache side effect — soft delete başarılı, Redis çökse bile 204 dönmeli.
         try {
             $this->cache->invalidate($userId);
         } catch (Throwable $e) {
-            Log::warning("Task silindi ancak cache temizlenemedi: {$e->getMessage()}", [
+            Log::warning('Cache temizlenemedi: ' . $e->getMessage(), [
                 'user_id' => $userId,
                 'task_id' => $taskId,
             ]);

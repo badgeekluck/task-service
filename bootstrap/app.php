@@ -23,14 +23,10 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
 
-        // Kimlik doğrulama hatası → 401 JSON (her zaman, Accept header'ına bakılmaksızın)
         $exceptions->render(function (AuthenticationException $e, Request $request) {
-            return response()->json([
-                'message' => 'Kimlik doğrulaması gerekli.',
-            ], 401);
+            return response()->json(['message' => 'Kimlik doğrulaması gerekli.'], 401);
         });
 
-        // Geçersiz durum geçişi → 422
         $exceptions->render(function (InvalidStatusTransitionException $e, Request $request) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -40,29 +36,22 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // Model bulunamadı → 404
         $exceptions->render(function (ModelNotFoundException $e, Request $request) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'Kayıt bulunamadı.',
-                ], 404);
+                return response()->json(['message' => 'Kayıt bulunamadı.'], 404);
             }
         });
 
-        // Yetki hatası → 403
         $exceptions->render(function (AuthorizationException $e, Request $request) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'Bu işlem için yetkiniz yok.',
-                ], 403);
+                return response()->json(['message' => 'Bu işlem için yetkiniz yok.'], 403);
             }
         });
 
     })
     ->booted(function (): void {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)
-                        ->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
         RateLimiter::for('auth', function (Request $request) {

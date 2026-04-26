@@ -21,9 +21,6 @@ final readonly class CreateTaskAction
 
     public function execute(User $user, TaskData $data): Task
     {
-        // Transaction içinde: INSERT + job dispatch birlikte atomik.
-        // afterCommit() garantisi: INSERT commit olmadan job kuyruğa girmez.
-        // Transaction rollback olursa (örn. DB constraint) job hiç dispatch edilmez.
         $task = DB::transaction(function () use ($user, $data): Task {
             $task = Task::create([
                 'user_id'     => $user->id,
@@ -39,12 +36,10 @@ final readonly class CreateTaskAction
             return $task;
         });
 
-        // Cache side effect — transaction dışında, bağımsız.
-        // Redis çökse bile task oluşturuldu; 201 dönmeli.
         try {
             $this->cache->invalidate($user->id);
         } catch (Throwable $e) {
-            Log::warning("Cache temizlenemedi: {$e->getMessage()}", [
+            Log::warning('Cache temizlenemedi: ' . $e->getMessage(), [
                 'user_id' => $user->id,
                 'task_id' => $task->id,
             ]);

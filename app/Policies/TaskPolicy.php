@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Policies;
 
 use App\Models\Task;
@@ -12,33 +14,21 @@ class TaskPolicy
         return true;
     }
 
-    /**
-     * Kullanıcı bu tekil görevi görebilir mi?
-     */
     public function view(User $user, Task $task): bool
     {
         return $user->id === $task->user_id;
     }
 
-    /**
-     * Kullanıcı yeni görev oluşturabilir mi?
-     */
     public function create(User $user): bool
     {
         return true;
     }
 
-    /**
-     * Kullanıcı bu görevi güncelleyebilir mi?
-     */
     public function update(User $user, Task $task): bool
     {
         return $user->id === $task->user_id;
     }
 
-    /**
-     * Kullanıcı bu görevi silebilir mi?
-     */
     public function delete(User $user, Task $task): bool
     {
         return $user->id === $task->user_id;
