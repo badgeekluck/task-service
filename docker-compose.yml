@@ -9,9 +9,10 @@ services:
     volumes:
       - .:/app
     ports:
-      - "8000:80" 
+      - "8000:80"
     networks:
-      - task_network
+      - task_network   # db ve redis ile iletişim
+      - task-app       # frontend container'ının ulaşması için
     depends_on:
       - db
       - redis
@@ -65,6 +66,8 @@ services:
 networks:
   task_network:
     driver: bridge
+  task-app:
+    external: true   # docker network create task-app ile önceden oluşturulmalı
 
 volumes:
   pgdata:

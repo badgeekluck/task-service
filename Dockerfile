@@ -3,9 +3,10 @@ FROM dunglas/frankenphp:php8.4-alpine
 ENV SERVER_NAME=":80"
 ENV OCTANE_SERVER="frankenphp"
 
+RUN apk add --no-cache netcat-openbsd
+
 RUN install-php-extensions \
     pdo_pgsql \
-    redis \
     bcmath \
     opcache \
     pcntl \

@@ -2,6 +2,9 @@
 
 Laravel 13 + PHP 8.4 ile yazılmış RESTful görev yönetimi API'si.
 
+**Frontend repository:** [task-service-frontend](https://github.com/<your-username>/task-service-frontend)
+Tarayıcı arayüzü için Next.js 15 frontend projesi ayrı bir repo'da. İkisi aynı Docker network'üne bağlanır.
+
 ## Stack
 
 - **PHP 8.4** — readonly class, typed properties
@@ -21,6 +24,9 @@ cd task-service
 
 # .env dosyasını oluştur
 cp .env.example .env
+
+# Frontend ile ortak Docker network'ü oluştur (bir kez yeterli)
+docker network create task-app
 
 # Docker ile çalıştır (app + worker + db + redis otomatik başlar)
 docker compose up -d
@@ -42,13 +48,45 @@ Insomnia collection dosyası: `insomnia-collection.json` — import edip direkt 
 
 Tüm endpointler `/api/v1/` prefix'i ile çalışır.
 
+Tüm isteklerde `Accept: application/json` header'ı gönderilmeli.
+
 ### Auth
 
 | Method | Endpoint | Açıklama |
 |--------|----------|----------|
 | POST | `/register` | Yeni kullanıcı kaydı |
 | POST | `/login` | Giriş, token döner |
-| POST | `/logout` | Token'ı siler |
+| POST | `/logout` | Token'ı siler (auth gerekli) |
+
+**Register** `POST /api/v1/register`
+```json
+{
+  "name": "Harun",
+  "email": "harun@test.com",
+  "password": "password",
+  "password_confirmation": "password"
+}
+```
+
+**Login** `POST /api/v1/login`
+```json
+{ "email": "harun@test.com", "password": "password" }
+```
+Response:
+```json
+{ "token": "1|abc123..." }
+```
+
+**Logout** `POST /api/v1/logout`
+```
+Authorization: Bearer 1|abc123...
+```
+
+Token sonraki tüm isteklerde header olarak gönderilmeli:
+```
+Authorization: Bearer <token>
+Accept: application/json
+```
 
 ### Tasks (auth gerekli)
 
@@ -62,7 +100,9 @@ Tüm endpointler `/api/v1/` prefix'i ile çalışır.
 
 **Filtreler:** `?status=pending&priority=high&search=kelime&per_page=15`
 
-Tüm isteklerde `Accept: application/json` header'ı gönderilmeli.
+**Status değerleri:** `pending` · `in_progress` · `completed` · `cancelled`
+
+**Priority değerleri:** `low` · `medium` · `high` · `critical`
 
 ## Mimari Kararlar
 
@@ -129,7 +169,7 @@ Task oluşturulunca `ProcessTaskCreated` job'ı Redis queue'ya gönderilir:
 
 ```php
 // CreateTaskAction içinde
-ProcessTaskCreated::dispatch($task);
+ProcessTaskCreated::dispatch($task->id, $user->id)->afterCommit();
 // API burada durmuyor — 201 döner, job arka planda işlenir
 ```
 
